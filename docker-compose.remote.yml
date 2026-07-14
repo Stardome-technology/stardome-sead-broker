@@ -35,8 +35,11 @@ services:
       - ${STARDOME_CLIENT_PATH:-/dev/null}:/opt/stardome/bin/stardome-client
     devices:
       - ${STARDOME_PORT:-/dev/ttyUSB0}:${STARDOME_PORT:-/dev/ttyUSB0}
+    # Required so the container can reach the host's edge-service via host.docker.internal.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # No depends_on — the broker connects to edge-service via SEAD_EDGE_URL,
-    # which is typically http://localhost:8081 (same host).
+    # which is typically http://host.docker.internal:8081 (same host, via extra_hosts).
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
       interval: 15s
