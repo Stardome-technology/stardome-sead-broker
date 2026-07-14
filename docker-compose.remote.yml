@@ -11,7 +11,7 @@ services:
       - path: .env
         required: true
     environment:
-      - STARDOME_CLIENT_PATH=${STARDOME_CLIENT_PATH:-/opt/stardome/bin/stardome-client}
+      - STARDOME_CLIENT_PATH=/opt/stardome/bin/stardome-client
       - STARDOME_PORT=${STARDOME_PORT:-/dev/ttyUSB0}
       - STARDOME_BAUD=${STARDOME_BAUD:-115200}
       - STARDOME_TIMEOUT_MS=${STARDOME_TIMEOUT_MS:-20000}
@@ -30,18 +30,13 @@ services:
     volumes:
       # Mount the serial device for hardware access
       - ${STARDOME_PORT:-/dev/ttyUSB0}:${STARDOME_PORT:-/dev/ttyUSB0}
-      # Mount a local stardome-client binary (when not baked into the image).
-      # STARDOME_CLIENT_BIN_MOUNT should point to the host path to the binary.
-      # /opt/stardome/bin/ exists in the image (created by Dockerfile RUN mkdir -p).
-      - ${STARDOME_CLIENT_BIN_MOUNT:-/dev/null}:/opt/stardome/bin/stardome-client
+      # Mount the stardome-client binary from the host path into the container.
+      # STARDOME_CLIENT_PATH in .env should be the host path to the binary.
+      - ${STARDOME_CLIENT_PATH:-/dev/null}:/opt/stardome/bin/stardome-client
     devices:
       - ${STARDOME_PORT:-/dev/ttyUSB0}:${STARDOME_PORT:-/dev/ttyUSB0}
-    # Required on Linux so the container can reach the host via host.docker.internal.
-    # Harmless on WSL (Docker Desktop provides it automatically).
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     # No depends_on — the broker connects to edge-service via SEAD_EDGE_URL,
-    # which may be a remote host (e.g. poc1:8081) rather than a local container.
+    # which is typically http://localhost:8081 (same host).
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
       interval: 15s
