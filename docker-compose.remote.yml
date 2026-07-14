@@ -1,0 +1,53 @@
+# Remote compose file — pulls pre-built images from ghcr.io instead of building.
+# Usage: docker compose -f docker-compose.remote.yml up -d
+
+services:
+  broker:
+    image: ghcr.io/stardome-technology/stardome-sead-broker:latest
+    container_name: sead-broker
+    ports:
+      - "8088:8088"
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      - STARDOME_CLIENT_PATH=${STARDOME_CLIENT_PATH:-/opt/stardome/bin/stardome-client}
+      - STARDOME_PORT=${STARDOME_PORT:-/dev/ttyUSB0}
+      - STARDOME_BAUD=${STARDOME_BAUD:-115200}
+      - STARDOME_TIMEOUT_MS=${STARDOME_TIMEOUT_MS:-20000}
+      - STARDOME_SCHEME=${STARDOME_SCHEME:-v1.0.0_0}
+      - SEAD_EDGE_URL=${SEAD_EDGE_URL:?error}
+      - SEAD_INGEST_TIMEOUT_SEC=${SEAD_INGEST_TIMEOUT_SEC:-30}
+      - EDGE_MODULE_ID=${EDGE_MODULE_ID:?error}
+      - EDGE_ID=${EDGE_ID:?error}
+      - EDGE_ORG_ID=${EDGE_ORG_ID:?error}
+      - SEAD_AUTH_TOKEN=${SEAD_AUTH_TOKEN:-}
+      - GEN_TOKEN_PATH=${GEN_TOKEN_PATH:-}
+      - EDGE_ORG_SIGNING_KEY=${EDGE_ORG_SIGNING_KEY:-}
+      - EDGE_ORG_PUBLIC_KEY=${EDGE_ORG_PUBLIC_KEY:-}
+      - EDGE_TOKEN_TTL=${EDGE_TOKEN_TTL:-300}
+      - GEN_TOKEN_TIMEOUT_SEC=${GEN_TOKEN_TIMEOUT_SEC:-1800}
+    volumes:
+      # Mount the serial device for hardware access
+      - /dev/ttyUSB0:/dev/ttyUSB0
+      # Optionally mount a local stardome-client binary (overrides the one in
+      # the image). Useful during development or with custom builds.
+      # - ./bin/stardome-client:/opt/stardome/bin/stardome-client
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    # No depends_on — the broker connects to edge-service via SEAD_EDGE_URL,
+    # which may be a remote host (e.g. poc1:8081) rather than a local container.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - sead-network
+
+networks:
+  sead-network:
+    name: sead-network
+    external: true
