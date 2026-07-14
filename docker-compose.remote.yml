@@ -36,10 +36,10 @@ services:
       - ${STARDOME_CLIENT_BIN_MOUNT:-/dev/null}:/opt/stardome/bin/stardome-client
     devices:
       - ${STARDOME_PORT:-/dev/ttyUSB0}:${STARDOME_PORT:-/dev/ttyUSB0}
-    # On Linux, host.docker.internal is not available by default.
-    # Uncomment if SEAD_EDGE_URL uses host.docker.internal:
-    # extra_hosts:
-    #   - "host.docker.internal:host-gateway"
+    # Required on Linux so the container can reach the host via host.docker.internal.
+    # Harmless on WSL (Docker Desktop provides it automatically).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # No depends_on — the broker connects to edge-service via SEAD_EDGE_URL,
     # which may be a remote host (e.g. poc1:8081) rather than a local container.
     healthcheck:
