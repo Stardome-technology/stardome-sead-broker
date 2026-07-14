@@ -29,12 +29,12 @@ services:
       - GEN_TOKEN_TIMEOUT_SEC=${GEN_TOKEN_TIMEOUT_SEC:-1800}
     volumes:
       # Mount the serial device for hardware access
-      - /dev/ttyUSB0:/dev/ttyUSB0
+      - ${STARDOME_PORT:-/dev/ttyUSB0}:${STARDOME_PORT:-/dev/ttyUSB0}
       # Optionally mount a local stardome-client binary (overrides the one in
       # the image). Useful during development or with custom builds.
       # - ./bin/stardome-client:/opt/stardome/bin/stardome-client
     devices:
-      - /dev/ttyUSB0:/dev/ttyUSB0
+      - ${STARDOME_PORT:-/dev/ttyUSB0}:${STARDOME_PORT:-/dev/ttyUSB0}
     # No depends_on — the broker connects to edge-service via SEAD_EDGE_URL,
     # which may be a remote host (e.g. poc1:8081) rather than a local container.
     healthcheck:
