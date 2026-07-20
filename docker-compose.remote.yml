@@ -4,7 +4,7 @@
 services:
   broker:
     image: ghcr.io/stardome-technology/stardome-sead-broker:latest
-    container_name: sead-broker
+    container_name: stardome-sead-broker
     ports:
       - "8088:8088"
     env_file:
