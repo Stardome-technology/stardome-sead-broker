@@ -11,7 +11,7 @@ services:
       - path: .env
         required: true
     environment:
-      - STARDOME_CLIENT_PATH=${STARDOME_CLIENT_PATH:-/opt/stardome/bin/stardome-client}
+      - STARDOME_CLIENT_PATH=/opt/stardome/bin/stardome-client
       - STARDOME_PORT=${STARDOME_PORT:-/dev/ttyUSB0}
       - STARDOME_BAUD=${STARDOME_BAUD:-115200}
       - STARDOME_TIMEOUT_MS=${STARDOME_TIMEOUT_MS:-20000}
@@ -30,13 +30,20 @@ services:
     volumes:
       # Mount the serial device for hardware access
       - ${STARDOME_PORT:-/dev/ttyUSB0}:${STARDOME_PORT:-/dev/ttyUSB0}
-      # Optionally mount a local stardome-client binary (overrides the one in
-      # the image). Useful during development or with custom builds.
-      # - ./bin/stardome-client:/opt/stardome/bin/stardome-client
+      # Mount the stardome-client binary from the host path into the container.
+      # STARDOME_CLIENT_PATH in .env should be the host path to the binary.
+      - ${STARDOME_CLIENT_PATH:-/dev/null}:/opt/stardome/bin/stardome-client
+      # Mount payloads and signatures directories for the broker to access.
+      # The broker passes these paths directly to stardome-client.
+      - ${PAYLOADS_DIR:-/home/bd/payloads}:/data/payloads
+      - ${SIGNATURES_DIR:-/home/bd/signatures}:/data/signatures
     devices:
       - ${STARDOME_PORT:-/dev/ttyUSB0}:${STARDOME_PORT:-/dev/ttyUSB0}
+    # Required so the container can reach the host's edge-service via host.docker.internal.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # No depends_on — the broker connects to edge-service via SEAD_EDGE_URL,
-    # which may be a remote host (e.g. poc1:8081) rather than a local container.
+    # which is typically http://host.docker.internal:8081 (same host, via extra_hosts).
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
       interval: 15s
