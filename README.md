@@ -30,7 +30,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    A[gen-token on secure laptop] -->|SEAD_AUTH_TOKEN env| B[Broker]
+    A[edge-service POST /auth/token] -->|SEAD_AUTH_TOKEN env| B[Broker]
     C[Client] -->|POST /attest| B
     B -->|passthrough| D[Token in response]
 ```
@@ -39,8 +39,8 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    A[Broker] -->|no pregen token| B{gen-token binary?}
-    B -->|yes| C[gen-token<br/>~20 min XMSS sign]
+    A[Broker] -->|no pregen token| B{edge-service available?}
+    B -->|yes| C[POST /auth/token\n~1-2s XMSS sign]
     C -->|token| D[Response]
     B -->|no| E[No token field]
 ```
@@ -105,10 +105,10 @@ Create a `.env` file (copy from `.env` in this repo):
 | `EDGE_MODULE_ID` | **Yes** | — | Module ID (hex) |
 | `EDGE_ID` | **Yes** | — | Edge device ID (hex) |
 | `EDGE_ORG_ID` | **Yes** | — | Organization ID (hex) |
-| `SEAD_AUTH_TOKEN` | No | — | Pre-generated token (recommended) |
-| `GEN_TOKEN_PATH` | No | — | gen-token binary path (dev only) |
-| `EDGE_ORG_SIGNING_KEY` | No | — | Org XMSS signing key |
-| `EDGE_ORG_PUBLIC_KEY` | No | — | Org XMSS public key |
+| `SEAD_AUTH_TOKEN` | No | — | Pre-generated token (recommended — from `POST /auth/token` on edge-service) |
+| `GEN_TOKEN_PATH` | No | — | **Deprecated.** gen-token binary path (dev only). Prefer edge-service API |
+| `EDGE_ORG_SIGNING_KEY` | No | — | Org XMSS signing key (only needed for legacy gen-token auto-gen) |
+| `EDGE_ORG_PUBLIC_KEY` | No | — | Org XMSS public key (only needed for legacy gen-token auto-gen) |
 | `EDGE_TOKEN_TTL` | No | `300` | Token TTL (s) |
 | `GEN_TOKEN_TIMEOUT_SEC` | No | `1800` | Auto-generation timeout (s) |
 
@@ -116,8 +116,8 @@ Create a `.env` file (copy from `.env` in this repo):
 
 | Mode | Setup | Latency | Use case |
 |------|-------|---------|----------|
-| **Pre-generated** (recommended) | Set `SEAD_AUTH_TOKEN` | Zero | Production — generate on secure laptop |
-| **Auto-generation** | Set `GEN_TOKEN_PATH` + org keys | ~20 min | Development/debug only |
+| **Pre-generated** (recommended) | Set `SEAD_AUTH_TOKEN` from `POST /auth/token` | Zero | Production — edge-service API |
+| **Auto-generation** | `GEN_TOKEN_PATH` + org keys (legacy) | ~20 min | Development only |
 | **None** | Neither configured | N/A | Attestation without pinning |
 
 ## API Endpoints
@@ -225,24 +225,22 @@ hardware with SEAD services. Key customization points:
    a custom binary with different command semantics.
 2. **Payload selection**: The `payload_cbor` / `payload_file` fields let you
    control what the hardware signs — adapt to your specific payload format.
-3. **Token strategy**: Pre-generated tokens are the production path. Auto-generation
-   using `gen-token` is provided for development environments where the XMSS
-   signing key is accessible on the same machine.
+3. **Token strategy**: Pre-generated tokens from the edge-service `POST /auth/token`
+   API are the production path. The legacy `gen-token` binary auto-generation is
+   provided for development environments where the edge-service is not reachable.
 
 ## Demo Flow
 
 1. **Key generation**: Use the `keygen` Docker image (see
    [stardome-sead](https://github.com/Stardome-technology/stardome-sead))
 2. **Bootstrap**: Register org + authorize edge via `gen-bootstrap`
-3. **Pre-generate token**: Use `gen-token` on the secure laptop:
+3. **Pre-generate token** via the edge-service API:
    ```bash
-   docker run --rm -v "$(pwd):/data" \
-     ghcr.io/stardome-technology/stardome-sead/gen-token \
-     --org-id <org_id_hex> \
-     --org-signing-key <org_secret_key_hex> \
-     --org-public-key <org_public_key_hex> \
-     --payload-file /data/endorse_att.bin \
-     --out-file /data/token.b64
+   curl -X POST http://localhost:8081/auth/token \
+     -H "Content-Type: application/json" \
+     -d '{"ttl": 0}' \
+     | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])" \
+     > token.b64
    ```
 4. **Set `SEAD_AUTH_TOKEN`** in `.env` to the generated token
 5. **Run the broker** and call `POST /attest`
