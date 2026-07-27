@@ -31,12 +31,12 @@ services:
       # Mount the serial device for hardware access
       - ${STARDOME_PORT:-/dev/ttyUSB0}:${STARDOME_PORT:-/dev/ttyUSB0}
       # Mount the stardome-client binary from the host path into the container.
-      # STARDOME_CLIENT_PATH in .env should be the host path to the binary.
+      # STARDOME_CLIENT_PATH in .env should be the host path to the binary FILE.
       - ${STARDOME_CLIENT_PATH:-/dev/null}:/opt/stardome/bin/stardome-client
       # Mount payloads and signatures directories for the broker to access.
       # The broker passes these paths directly to stardome-client.
-      - ${PAYLOADS_DIR:-/home/bd/payloads}:/data/payloads
-      - ${SIGNATURES_DIR:-/home/bd/signatures}:/data/signatures
+      - ${PAYLOADS_DIR:-/home/ubuntu/payloads}:/data/payloads
+      - ${SIGNATURES_DIR:-/home/ubuntu/signatures}:/data/signatures
     devices:
       - ${STARDOME_PORT:-/dev/ttyUSB0}:${STARDOME_PORT:-/dev/ttyUSB0}
     # Required so the container can reach the host's edge-service via host.docker.internal.
