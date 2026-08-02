@@ -17,7 +17,7 @@ sequenceDiagram
     participant HW as Stardome HW (UART)
     participant SEAD as edge-service (/ingest)
 
-    User->>Broker: POST /attest (payload_cbor, [auth_token])
+    User->>Broker: POST /attest (payload_file, [auth_token])
     Broker->>Broker: Resolve token (request > env > auto-gen)
     Broker->>HW: stardome-client attestation (FLAG_SIGN)
     HW-->>Broker: Tree + Attestation CBOR
@@ -134,15 +134,12 @@ Request body:
 
 ```json
 {
-  "payload_cbor": "/path/to/payload.cbor",
+  "payload_file": "/path/to/payload.txt",
   "auth_token": "optional-per-request-token"
 }
 ```
 
-- `payload_cbor` (optional, string): Path to a pre-built CBOR attestation payload.
-  Defaults to a minimal payload if omitted.
-- `payload_file` (optional, string): Path to a raw file — the broker builds a
-  single-source CBOR payload automatically. Mutually exclusive with `payload_cbor`.
+- `payload_file` (required, string): Path to a file the hardware should sign.
 - `auth_token` (optional, string): Per-request auth token. Takes precedence over
   the `SEAD_AUTH_TOKEN` environment variable.
 
@@ -163,7 +160,7 @@ Response (200):
 ```bash
 curl -X POST http://localhost:8088/attest \
   -H "Content-Type: application/json" \
-  -d '{"payload_cbor": "/data/payload.cbor"}'
+  -d '{"payload_file": "/data/payloads/my_payload.txt"}'
 ```
 
 **With per-request token (overrides env):**
@@ -171,7 +168,7 @@ curl -X POST http://localhost:8088/attest \
 curl -X POST http://localhost:8088/attest \
   -H "Content-Type: application/json" \
   -d '{
-    "payload_cbor": "/data/payload.cbor",
+    "payload_file": "/data/payloads/my_payload.txt",
     "auth_token": "my_request_token"
   }'
 ```
@@ -180,7 +177,7 @@ curl -X POST http://localhost:8088/attest \
 ```bash
 curl -X POST http://localhost:8088/attest \
   -H "Content-Type: application/json" \
-  -d '{"payload_cbor": "/data/payload.cbor"}'
+  -d '{"payload_file": "/data/payloads/my_payload.txt"}'
 ```
 
 ### GET /health
@@ -223,7 +220,7 @@ hardware with SEAD services. Key customization points:
 
 1. **stardome-client path**: Override via `STARDOME_CLIENT_PATH` or volume-mount
    a custom binary with different command semantics.
-2. **Payload selection**: The `payload_cbor` / `payload_file` fields let you
+2. **Payload selection**: The `payload_file` field lets you
    control what the hardware signs — adapt to your specific payload format.
 3. **Token strategy**: Pre-generated tokens from the edge-service `POST /auth/token`
    API are the production path. The legacy `gen-token` binary auto-generation is
