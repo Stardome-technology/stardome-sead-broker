@@ -69,6 +69,18 @@ docker compose -f docker-compose.remote.yml up -d
 
 # 3. Verify
 curl http://localhost:8088/health
+
+## Public ports to open
+
+For an integrator deploying the broker, only one port needs to be reachable
+from clients:
+
+- **`8088/tcp`** — broker HTTP API (`/attest`, `/health`, `/status`)
+
+This is the only public port. The broker reaches the SEAD edge-service and the
+Stardome hardware over UART internally; no other ports need to be exposed. If
+clients are on the same host or Docker network, `8088` can stay closed to the
+internet as well.
 ```
 
 ### Finding the serial device
