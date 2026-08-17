@@ -18,6 +18,10 @@ services:
       - STARDOME_SCHEME=${STARDOME_SCHEME:-v1.0.0_0}
       - SEAD_EDGE_URL=${SEAD_EDGE_URL:?error}
       - SEAD_INGEST_TIMEOUT_SEC=${SEAD_INGEST_TIMEOUT_SEC:-30}
+      # Optional CA bundle to trust when SEAD_EDGE_URL is https:// with a
+      # self-signed/private CA (gateway single-side TLS). Point at the mounted
+      # ca.crt; leave empty to use the system trust store.
+      - SEAD_CA_CERT=${SEAD_CA_CERT:-/etc/broker/certs/ca.crt}
       - EDGE_MODULE_ID=${EDGE_MODULE_ID:?error}
       - EDGE_ID=${EDGE_ID:?error}
       - EDGE_ORG_ID=${EDGE_ORG_ID:?error}
@@ -37,6 +41,8 @@ services:
       # The broker passes these paths directly to stardome-client.
       - ${PAYLOADS_DIR:-/home/ubuntu/payloads}:/data/payloads
       - ${SIGNATURES_DIR:-/home/ubuntu/signatures}:/data/signatures
+      # Mount the CA bundle the broker trusts for the gateway's self-signed TLS.
+      - ./certs:/etc/broker/certs:ro
     devices:
       - ${STARDOME_PORT:-/dev/ttyUSB0}:${STARDOME_PORT:-/dev/ttyUSB0}
     # Required so the container can reach the host's edge-service via host.docker.internal.

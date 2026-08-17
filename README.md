@@ -98,7 +98,7 @@ Update `STARDOME_PORT` in `.env` to match your device (default: `/dev/ttyUSB0`).
 
 The `SEAD_EDGE_URL` can point to:
 - A local container: `http://edge-service:8081` (on `sead-network`)
-- A remote POC node: `http://192.168.0.102:8081`
+- A remote node: `http://192.168.0.102:8081`
 - Any reachable SEAD edge-service
 
 ## Configuration
@@ -238,7 +238,7 @@ hardware with SEAD services. Key customization points:
    API are the production path. The legacy `gen-token` binary auto-generation is
    provided for development environments where the edge-service is not reachable.
 
-## Demo Flow
+## Example Flow
 
 1. **Key generation**: Use the `keygen` Docker image (see
    [stardome-sead](https://github.com/Stardome-technology/stardome-sead))
