@@ -22,10 +22,16 @@ services:
       # self-signed/private CA (gateway single-side TLS). Point at the mounted
       # ca.crt; leave empty to use the system trust store.
       - SEAD_CA_CERT=${SEAD_CA_CERT:-/etc/broker/certs/ca.crt}
+      # When SEAD_EDGE_URL points at a gateway (https://<node>:30080, the
+      # recommended public path), SEAD_AUTH_TOKEN MUST be the same value as the
+      # gateway's GATEWAY_AUTH_SECRET (or one of its GATEWAY_EDGE_TOKENS), because
+      # the gateway requires it as `Authorization: Bearer <value>` on /ingest.
+      # It is NOT a cross-org token: cross-org access is authorized by the SEAD
+      # DAG (org/edge authorization events), not a shared transport secret.
+      - SEAD_AUTH_TOKEN=${SEAD_AUTH_TOKEN:-}
       - EDGE_MODULE_ID=${EDGE_MODULE_ID:?error}
       - EDGE_ID=${EDGE_ID:?error}
       - EDGE_ORG_ID=${EDGE_ORG_ID:?error}
-      - SEAD_AUTH_TOKEN=${SEAD_AUTH_TOKEN:-}
       - GEN_TOKEN_PATH=${GEN_TOKEN_PATH:-}
       - EDGE_ORG_SIGNING_KEY=${EDGE_ORG_SIGNING_KEY:-}
       - EDGE_ORG_PUBLIC_KEY=${EDGE_ORG_PUBLIC_KEY:-}
