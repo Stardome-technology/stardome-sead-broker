@@ -101,6 +101,44 @@ The `SEAD_EDGE_URL` can point to:
 - A remote node: `http://192.168.0.102:8081`
 - Any reachable SEAD edge-service
 
+### Trusting a gateway's TLS cert (closed deployments only)
+
+If the broker calls a SEAD gateway over `https://<node>:30080/...` that presents a
+certificate signed by a **private/self-signed CA** (see the SEAD/gateway setup), the
+broker must trust that CA. This is only appropriate in **closed, single-operator
+deployments**  where every client is under your control.
+
+- Distribute **only `ca.crt`** to clients as the trust anchor. Do **not** distribute
+  `ca.srl` (CA working state, not a trust artifact) or any private key.
+- This approach is **not advised for public production**: a publicly-reachable
+  gateway should use a public cert (e.g. Let's Encrypt) signed by a globally-trusted
+  CA, so clients need no manual CA distribution.
+
+#### How the broker container trusts the CA
+
+The compose file already mounts `./certs` read-only into the container at
+`/etc/broker/certs` and points `SEAD_CA_CERT` at it. To make the broker trust a
+private CA, just drop the CA cert in place (from the CA/Strix box):
+
+```bash
+mkdir -p certs
+scp bd@<ca-host>:/etc/myca/certs/ca.crt ./certs/ca.crt
+```
+
+Then restart so the container picks up the mount:
+
+```bash
+docker compose -f docker-compose.remote.yml up -d
+```
+
+The `SEAD_CA_CERT` env var is `/etc/broker/certs/ca.crt` by default (matching the
+mount). If you set `SEAD_EDGE_URL=https://<node>:30080/...` in `.env` and
+dropped `ca.crt` in `./certs`, the broker's outbound HTTPS to the gateway will
+trust it automatically. Leave `SEAD_CA_CERT` empty and omit the `./certs`
+directory to fall back to the system trust store.
+
+> `certs/` is git-ignored in this repo, so the CA bundle will not be committed.
+
 ## Configuration
 
 Create a `.env` file (copy from `.env` in this repo):
