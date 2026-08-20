@@ -26,23 +26,25 @@ sequenceDiagram
     Broker-->>User: {receipt_id, payload_hash, token}
 ```
 
-### Token flow (pre-generated — recommended)
+### Auth flow (shared secret — recommended)
+
+The broker authenticates `/ingest` to the gateway with a **shared secret**
+(the stack's `GATEWAY_AUTH_SECRET`), passed through as a bearer header.
 
 ```mermaid
 flowchart LR
-    A[edge-service POST /auth/token] -->|SEAD_AUTH_TOKEN env| B[Broker]
+    A[GATEWAY_AUTH_SECRET] -->|SEAD_AUTH_TOKEN env| B[Broker]
     C[Client] -->|POST /attest| B
-    B -->|passthrough| D[Token in response]
+    B -->|Bearer shared-secret| D[gateway /ingest]
 ```
 
-### Token flow (auto-generation — development only)
+### Auth flow (auto-generation — development only)
 
 ```mermaid
 flowchart LR
-    A[Broker] -->|no pregen token| B{edge-service available?}
-    B -->|yes| C[POST /auth/token\n~1-2s XMSS sign]
-    C -->|token| D[Response]
-    B -->|no| E[No token field]
+    A[Broker] -->|no credential| B{shared secret configured?}
+    B -->|yes| C[use SEAD_AUTH_TOKEN]
+    B -->|no| D[no Authorization header / attestation without ingest auth]
 ```
 
 ## Deploy
@@ -97,9 +99,14 @@ Update `STARDOME_PORT` in `.env` to match your device (default: `/dev/ttyUSB0`).
 ### Edge service address
 
 The `SEAD_EDGE_URL` can point to:
-- A local container: `http://edge-service:30080` (on `sead-network`)
-- A remote node: `http://192.168.0.102:30080`
-- Any reachable SEAD edge-service
+- The gateway on the same host: `https://<node-lan-ip>:30080` (e.g. `https://192.168.0.102:30080`)
+- A remote gateway: `https://<IP>:30080`
+- Any reachable SEAD gateway (TLS)
+
+> **Hostname matters for TLS.** The gateway is TLS-only. Set `SEAD_EDGE_URL` to the
+> node's **LAN IP** (which is in the gateway cert's SAN). Do **not** use
+> `host.docker.internal` — with `SEAD_CA_CERT` verification the cert is not valid
+> for that hostname.
 
 ### Trusting a gateway's TLS cert (closed deployments only)
 
@@ -148,8 +155,8 @@ Create a `.env` file (copy from `.env` in this repo):
 | `EDGE_MODULE_ID` | **Yes** | — | Module ID (hex) |
 | `EDGE_ID` | **Yes** | — | Edge device ID (hex) |
 | `EDGE_ORG_ID` | **Yes** | — | Organization ID (hex) |
-| `SEAD_AUTH_TOKEN` | No | — | Pre-generated token (recommended — from `POST /auth/token` on edge-service) |
-| `GEN_TOKEN_PATH` | No | — | **Deprecated.** gen-token binary path (dev only). Prefer edge-service API |
+| `SEAD_AUTH_TOKEN` | No | — | **Shared secret** for authenticating `/ingest` to the gateway. In the Go-gateway topology this is the **same value as the stack's `GATEWAY_AUTH_SECRET`** (a bearer the gateway compares as a plain shared secret) — it is **not** a CBOR XMSS token. See "Credentials vs. tokens" below. |
+| `GEN_TOKEN_PATH` | No | — | **Deprecated.** gen-token binary path (dev only). Prefer the shared-secret flow (`SEAD_AUTH_TOKEN` = `GATEWAY_AUTH_SECRET`) or edge-service's per-pin token generation |
 | `EDGE_ORG_SIGNING_KEY` | No | — | Org XMSS signing key (only needed for legacy gen-token auto-gen) |
 | `EDGE_ORG_PUBLIC_KEY` | No | — | Org XMSS public key (only needed for legacy gen-token auto-gen) |
 | `EDGE_TOKEN_TTL` | No | `300` | Token TTL (s) |
@@ -159,9 +166,26 @@ Create a `.env` file (copy from `.env` in this repo):
 
 | Mode | Setup | Latency | Use case |
 |------|-------|---------|----------|
-| **Pre-generated** (recommended) | Set `SEAD_AUTH_TOKEN` from `POST /auth/token` | Zero | Production — edge-service API |
+| **Shared secret** (recommended) | Set `SEAD_AUTH_TOKEN` = stack's `GATEWAY_AUTH_SECRET` | Zero | Production — authenticates broker → gateway `/ingest` |
+| **Per-request** | `auth_token` field on `POST /attest` | Zero | Rotate the credential per attestation; overrides env |
 | **Auto-generation** | `GEN_TOKEN_PATH` + org keys (legacy) | ~20 min | Development only |
-| **None** | Neither configured | N/A | Attestation without pinning |
+
+### Credentials vs. tokens (three distinct things)
+
+The SEAD stack uses **one shared secret** and **two token concepts**. They are
+frequently conflated; being precise avoids misconfiguration.
+
+| Name | Type | Where | Purpose |
+|------|------|-------|---------|
+| `GATEWAY_AUTH_SECRET` | plain shared secret | gateway `.env` | The bearer the gateway accepts (constant-time compare) for `/ingest`, `/pin`, etc. |
+| `SEAD_AUTH_TOKEN` (broker) | **the shared secret** | broker `.env` | What the broker sends as `Authorization: Bearer` on `/ingest`. Set it to **the same value as `GATEWAY_AUTH_SECRET`** |
+| `gen-token` / `auth_token` (CBOR) | XMSS-signed CBOR token | client → IPFS | Org/per-pin token verified by the gateway `/auth/verify` (Nginx `auth_request`) for IPFS pin operations |
+
+**Key point:** for the broker → gateway `/ingest` path, the credential is the **shared
+secret**, **not** a CBOR token. A `gen-token`-produced CBOR token is for **IPFS pinning
+verification** (`/auth/verify`), not for the broker's `/ingest` call. If you only run
+the broker against the gateway, set `SEAD_AUTH_TOKEN` = `GATEWAY_AUTH_SECRET` and you
+don't need `gen-token` at all.
 
 ## API Endpoints
 
@@ -265,25 +289,16 @@ hardware with SEAD services. Key customization points:
    a custom binary with different command semantics.
 2. **Payload selection**: The `payload_file` field lets you
    control what the hardware signs — adapt to your specific payload format.
-3. **Token strategy**: Pre-generated tokens from the edge-service `POST /auth/token`
-   API are the production path. The legacy `gen-token` binary auto-generation is
-   provided for development environments where the edge-service is not reachable.
+3. **Credential strategy**: Authenticate `/ingest` to the gateway with the **shared secret** (`SEAD_AUTH_TOKEN` = gateway's `GATEWAY_AUTH_SECRET`). If you need IPFS pinning with a CBOR token, use `gen-token` or edge-service's per-pin token (see above).
 
 ## Example Flow
 
 1. **Key generation**: Use the `keygen` Docker image (see
    [stardome-sead](https://github.com/Stardome-technology/stardome-sead))
 2. **Bootstrap**: Register org + authorize edge via `gen-bootstrap`
-3. **Pre-generate token** via the edge-service API:
-   ```bash
-   curl -X POST http://localhost:8081/auth/token \
-     -H "Content-Type: application/json" \
-     -d '{"ttl": 0}' \
-     | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])" \
-     > token.b64
-   ```
-4. **Set `SEAD_AUTH_TOKEN`** in `.env` to the generated token
-5. **Run the broker** and call `POST /attest`
+3. **Set `SEAD_AUTH_TOKEN`** in `.env` to the stack's `GATEWAY_AUTH_SECRET`
+   (the shared secret the broker sends as a bearer on `/ingest`)
+4. **Run the broker** and call `POST /attest`
 
 ## Related Repositories
 
