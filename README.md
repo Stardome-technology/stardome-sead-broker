@@ -118,14 +118,8 @@ deployments**  where every client is under your control.
 
 The compose file already mounts `./certs` read-only into the container at
 `/etc/broker/certs` and points `SEAD_CA_CERT` at it. To make the broker trust a
-private CA, just drop the CA cert in place (from the CA/Strix box):
-
-```bash
-mkdir -p certs
-scp bd@<ca-host>:/etc/myca/certs/ca.crt ./certs/ca.crt
-```
-
-Then restart so the container picks up the mount:
+private CA, 
+just drop `ca.crt` into `./certs` (from the local/remote secure ca box) the start/restart the API:
 
 ```bash
 docker compose -f docker-compose.remote.yml up -d
