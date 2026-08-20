@@ -55,7 +55,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # No depends_on — the broker connects to edge-service via SEAD_EDGE_URL,
-    # which is typically http://host.docker.internal:30080 (same host, via extra_hosts).
+    # which is typically https://host.docker.internal:30080 (same host, via extra_hosts).
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
       interval: 15s
