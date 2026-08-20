@@ -97,8 +97,8 @@ Update `STARDOME_PORT` in `.env` to match your device (default: `/dev/ttyUSB0`).
 ### Edge service address
 
 The `SEAD_EDGE_URL` can point to:
-- A local container: `http://edge-service:8081` (on `sead-network`)
-- A remote node: `http://192.168.0.102:8081`
+- A local container: `http://edge-service:30080` (on `sead-network`)
+- A remote node: `http://192.168.0.102:30080`
 - Any reachable SEAD edge-service
 
 ### Trusting a gateway's TLS cert (closed deployments only)
@@ -118,8 +118,7 @@ deployments**  where every client is under your control.
 
 The compose file already mounts `./certs` read-only into the container at
 `/etc/broker/certs` and points `SEAD_CA_CERT` at it. To make the broker trust a
-private CA, 
-just drop `ca.crt` into `./certs` (from the local/remote secure ca box) the start/restart the API:
+private CA, just drop `ca.crt` into `./certs` (from the local/remote secure ca box) the start/restart the API:
 
 ```bash
 docker compose -f docker-compose.remote.yml up -d
