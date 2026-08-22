@@ -29,7 +29,7 @@ sequenceDiagram
 ### Auth flow (shared secret — recommended)
 
 The broker authenticates `/ingest` to the gateway with a **shared secret**
-(the stack's `GATEWAY_AUTH_SECRET`), passed through as a bearer header.
+(the stack's `SEAD_AUTH_SECRET`), passed through as a bearer header.
 
 ```mermaid
 flowchart LR
