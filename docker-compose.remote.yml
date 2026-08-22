@@ -29,6 +29,7 @@ services:
       # It is NOT a cross-org token: cross-org access is authorized by the SEAD
       # DAG (org/edge authorization events), not a shared transport secret.
       - SEAD_AUTH_SECRET=${SEAD_AUTH_SECRET:-}
+      - SEAD_AUTH_SECRET=${SEAD_AUTH_SECRET:-}
       - EDGE_MODULE_ID=${EDGE_MODULE_ID:?error}
       - EDGE_ID=${EDGE_ID:?error}
       - EDGE_ORG_ID=${EDGE_ORG_ID:?error}

@@ -30,6 +30,7 @@ sequenceDiagram
 
 The broker authenticates `/ingest` to the gateway with a **shared secret**
 (the stack's `SEAD_AUTH_SECRET`), passed through as a bearer header.
+(the stack's `SEAD_AUTH_SECRET`), passed through as a bearer header.
 
 ```mermaid
 flowchart LR
@@ -43,6 +44,7 @@ flowchart LR
 ```mermaid
 flowchart LR
     A[Broker] -->|no credential| B{shared secret configured?}
+    B -->|yes| C[use SEAD_AUTH_SECRET]
     B -->|yes| C[use SEAD_AUTH_SECRET]
     B -->|no| D[no Authorization header / attestation without ingest auth]
 ```
@@ -208,6 +210,7 @@ Request body:
 
 - `payload_file` (required, string): Path to a file the hardware should sign.
 - `auth_token` (optional, string): Per-request auth token. Takes precedence over
+  the `SEAD_AUTH_SECRET` environment variable.
   the `SEAD_AUTH_SECRET` environment variable.
 
 Response (200):
