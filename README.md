@@ -33,7 +33,7 @@ The broker authenticates `/ingest` to the gateway with a **shared secret**
 
 ```mermaid
 flowchart LR
-    A[GATEWAY_AUTH_SECRET] -->|SEAD_AUTH_TOKEN env| B[Broker]
+    A[GATEWAY_AUTH_SECRET] -->|SEAD_AUTH_SECRET env| B[Broker]
     C[Client] -->|POST /attest| B
     B -->|Bearer shared-secret| D[gateway /ingest]
 ```
@@ -43,7 +43,7 @@ flowchart LR
 ```mermaid
 flowchart LR
     A[Broker] -->|no credential| B{shared secret configured?}
-    B -->|yes| C[use SEAD_AUTH_TOKEN]
+    B -->|yes| C[use SEAD_AUTH_SECRET]
     B -->|no| D[no Authorization header / attestation without ingest auth]
 ```
 
@@ -155,8 +155,8 @@ Create a `.env` file (copy from `.env` in this repo):
 | `EDGE_MODULE_ID` | **Yes** | — | Module ID (hex) |
 | `EDGE_ID` | **Yes** | — | Edge device ID (hex) |
 | `EDGE_ORG_ID` | **Yes** | — | Organization ID (hex) |
-| `SEAD_AUTH_TOKEN` | No | — | **Shared secret** for authenticating `/ingest` to the gateway. In the Go-gateway topology this is the **same value as the stack's `GATEWAY_AUTH_SECRET`** (a bearer the gateway compares as a plain shared secret) — it is **not** a CBOR XMSS token. See "Credentials vs. tokens" below. |
-| `GEN_TOKEN_PATH` | No | — | **Deprecated.** gen-token binary path (dev only). Prefer the shared-secret flow (`SEAD_AUTH_TOKEN` = `GATEWAY_AUTH_SECRET`) or edge-service's per-pin token generation |
+| `SEAD_AUTH_SECRET` | No | — | **Shared secret** for authenticating `/ingest` to the gateway. In the Go-gateway topology this is the **same value as the stack's `GATEWAY_AUTH_SECRET`** (a bearer the gateway compares as a plain shared secret) — it is **not** a CBOR XMSS token. See "Credentials vs. tokens" below. |
+| `GEN_TOKEN_PATH` | No | — | **Deprecated.** gen-token binary path (dev only). Prefer the shared-secret flow (`SEAD_AUTH_SECRET` = `GATEWAY_AUTH_SECRET`) or edge-service's per-pin token generation |
 | `EDGE_ORG_SIGNING_KEY` | No | — | Org XMSS signing key (only needed for legacy gen-token auto-gen) |
 | `EDGE_ORG_PUBLIC_KEY` | No | — | Org XMSS public key (only needed for legacy gen-token auto-gen) |
 | `EDGE_TOKEN_TTL` | No | `300` | Token TTL (s) |
@@ -166,7 +166,7 @@ Create a `.env` file (copy from `.env` in this repo):
 
 | Mode | Setup | Latency | Use case |
 |------|-------|---------|----------|
-| **Shared secret** (recommended) | Set `SEAD_AUTH_TOKEN` = stack's `GATEWAY_AUTH_SECRET` | Zero | Production — authenticates broker → gateway `/ingest` |
+| **Shared secret** (recommended) | Set `SEAD_AUTH_SECRET` = stack's `GATEWAY_AUTH_SECRET` | Zero | Production — authenticates broker → gateway `/ingest` |
 | **Per-request** | `auth_token` field on `POST /attest` | Zero | Rotate the credential per attestation; overrides env |
 | **Auto-generation** | `GEN_TOKEN_PATH` + org keys (legacy) | ~20 min | Development only |
 
@@ -178,13 +178,13 @@ frequently conflated; being precise avoids misconfiguration.
 | Name | Type | Where | Purpose |
 |------|------|-------|---------|
 | `GATEWAY_AUTH_SECRET` | plain shared secret | gateway `.env` | The bearer the gateway accepts (constant-time compare) for `/ingest`, `/pin`, etc. |
-| `SEAD_AUTH_TOKEN` (broker) | **the shared secret** | broker `.env` | What the broker sends as `Authorization: Bearer` on `/ingest`. Set it to **the same value as `GATEWAY_AUTH_SECRET`** |
+| `SEAD_AUTH_SECRET` (broker) | **the shared secret** | broker `.env` | What the broker sends as `Authorization: *** on `/ingest`. Set it to **the same value as `GATEWAY_AUTH_SECRET`** |
 | `gen-token` / `auth_token` (CBOR) | XMSS-signed CBOR token | client → IPFS | Org/per-pin token verified by the gateway `/auth/verify` (Nginx `auth_request`) for IPFS pin operations |
 
 **Key point:** for the broker → gateway `/ingest` path, the credential is the **shared
 secret**, **not** a CBOR token. A `gen-token`-produced CBOR token is for **IPFS pinning
 verification** (`/auth/verify`), not for the broker's `/ingest` call. If you only run
-the broker against the gateway, set `SEAD_AUTH_TOKEN` = `GATEWAY_AUTH_SECRET` and you
+the broker against the gateway, set `SEAD_AUTH_SECRET` = `GATEWAY_AUTH_SECRET` and you
 don't need `gen-token` at all.
 
 ## API Endpoints
@@ -208,7 +208,7 @@ Request body:
 
 - `payload_file` (required, string): Path to a file the hardware should sign.
 - `auth_token` (optional, string): Per-request auth token. Takes precedence over
-  the `SEAD_AUTH_TOKEN` environment variable.
+  the `SEAD_AUTH_SECRET` environment variable.
 
 Response (200):
 
@@ -289,14 +289,14 @@ hardware with SEAD services. Key customization points:
    a custom binary with different command semantics.
 2. **Payload selection**: The `payload_file` field lets you
    control what the hardware signs — adapt to your specific payload format.
-3. **Credential strategy**: Authenticate `/ingest` to the gateway with the **shared secret** (`SEAD_AUTH_TOKEN` = gateway's `GATEWAY_AUTH_SECRET`). If you need IPFS pinning with a CBOR token, use `gen-token` or edge-service's per-pin token (see above).
+3. **Credential strategy**: Authenticate `/ingest` to the gateway with the **shared secret** (`SEAD_AUTH_SECRET` = gateway's `GATEWAY_AUTH_SECRET`). If you need IPFS pinning with a CBOR token, use `gen-token` or edge-service's per-pin token (see above).
 
 ## Example Flow
 
 1. **Key generation**: Use the `keygen` Docker image (see
    [stardome-sead](https://github.com/Stardome-technology/stardome-sead))
 2. **Bootstrap**: Register org + authorize edge via `gen-bootstrap`
-3. **Set `SEAD_AUTH_TOKEN`** in `.env` to the stack's `GATEWAY_AUTH_SECRET`
+3. **Set `SEAD_AUTH_SECRET`** in `.env` to the stack's `GATEWAY_AUTH_SECRET`
    (the shared secret the broker sends as a bearer on `/ingest`)
 4. **Run the broker** and call `POST /attest`
 
