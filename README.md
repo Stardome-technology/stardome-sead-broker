@@ -101,7 +101,7 @@ Update `STARDOME_PORT` in `.env` to match your device (default: `/dev/ttyUSB0`).
 ### Edge service address
 
 The `SEAD_EDGE_URL` can point to:
-- The gateway on the same host: `https://<node-lan-ip>:30080` (e.g. `https://192.168.0.102:30080`)
+- The gateway on the same host: `https://<node-lan-ip>:30080` (e.g. `https://192.168.50.101:30080`)
 - A remote gateway: `https://<IP>:30080`
 - Any reachable SEAD gateway (TLS)
 
