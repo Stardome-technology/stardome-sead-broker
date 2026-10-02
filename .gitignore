@@ -1,5 +1,6 @@
 # Runtime env (user-specific, not committed)
 .env
+certs/
 
 # IDE
 .idea/
