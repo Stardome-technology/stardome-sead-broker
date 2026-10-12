@@ -300,6 +300,12 @@ hardware with SEAD services. Key customization points:
    (the shared secret the broker sends as a bearer on `/ingest`)
 4. **Run the broker** and call `POST /attest`
 
+## Git workflow
+
+This repository follows GitHub Flow (https://docs.github.com/en/get-started/using-github/github-flow).
+The authoritative rules for contributors and agents are in the `## Git workflow`
+section of [AGENTS.md](AGENTS.md).
+
 ## Related Repositories
 
 - [stardome-sead](https://github.com/Stardome-technology/stardome-sead) — full SEAD service stack
