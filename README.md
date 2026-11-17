@@ -291,6 +291,51 @@ hardware with SEAD services. Key customization points:
    control what the hardware signs — adapt to your specific payload format.
 3. **Credential strategy**: Authenticate `/ingest` to the gateway with the **shared secret** (`SEAD_AUTH_SECRET` = gateway's `SEAD_AUTH_SECRET`). If you need IPFS pinning with a CBOR token, use `gen-token` or edge-service's per-pin token (see above).
 
+### Three configuration layers — read this before adapting anything
+
+The broker's configuration splits into three layers with different authority.
+Most integration confusion comes from reading a lower layer as if it were a
+higher one.
+
+| Layer | Decided by | Binding on you? | Examples |
+| --- | --- | --- | --- |
+| **1. Contract** | the broker code | **Yes** — the broker will not work otherwise | `SEAD_EDGE_URL` must reach a SEAD gateway; `STARDOME_PORT` must be a serial device the `stardome-client` can open; the `POST /attest` request/response shape |
+| **2. Defaults** | the Compose file | No — overridable | `${STARDOME_PORT:-/dev/ttyUSB0}`, `${PAYLOADS_DIR:-/home/ubuntu/payloads}`, `${SIGNATURES_DIR:-/home/ubuntu/signatures}` |
+| **3. Our lab values** | us, for our own hosts | No — not part of the product | `/home/bd/payloads`, `/home/bd/signatures`, `/home/bd/stardome-client/bin/stardome-client` |
+
+Only layer 1 is a requirement. Layer 2 is a convenience so a first run works
+without a `.env`. Layer 3 is what we happen to use on our own machines — it is
+not a contract and does not constrain anyone else.
+
+Note that `SEAD_EDGE_URL` has **no default**: `docker-compose.remote.yml` uses
+`${SEAD_EDGE_URL:?error}`, so Compose refuses to start without it. That is
+deliberate — there is no sensible guess for where your gateway lives.
+
+### No user or home directory is required
+
+The broker does **not** require a specific OS user, username, or home directory:
+
+- `docker-compose.remote.yml` does not set `user:`;
+- the image runs as its own default user (no `USER` override is applied by the
+  Compose file);
+- every host path is a variable (`PAYLOADS_DIR`, `SIGNATURES_DIR`,
+  `STARDOME_CLIENT_PATH`, `STARDOME_PORT`), not a literal.
+
+Installing the broker on your own machine under your own account is the intended
+usage. The `/home/ubuntu/...` values in `docker-compose.remote.yml` are fallbacks
+for when the variable is unset, and `.env.example` exposes all of them.
+
+**The one real host requirement is serial device access.** The user running
+Compose must be able to open the serial device, which normally means membership
+of the `dialout` group:
+
+```bash
+ls -l /dev/ttyUSB0        # crw-rw---- 1 root dialout ...
+sudo usermod -aG dialout "$USER"   # then log out and back in
+```
+
+That requirement is about the device, not the account name.
+
 ## Example Flow
 
 1. **Key generation**: Use the `keygen` Docker image (see
